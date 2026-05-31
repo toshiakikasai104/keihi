@@ -4,3 +4,1690 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>経費管理アプリ｜退去立ち会い・原状回復</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f0f4f8; color: #2d3748; font-size: 16px; }
+
+/* ヘッダー */
+header {
+  background: linear-gradient(135deg, #2b6cb0, #2c5282);
+  color: white;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  position: sticky; top: 0; z-index: 100;
+  gap: 8px;
+}
+header h1 { font-size: 1rem; font-weight: 700; white-space: nowrap; }
+.header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+/* 月選択ボタン（ヘッダー右上） */
+.month-selector-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.18);
+  border: none; border-radius: 10px; padding: 6px 12px;
+  color: white; cursor: pointer; font-size: 0.95rem; font-weight: 700;
+  white-space: nowrap; transition: background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.month-selector-btn:hover { background: rgba(255,255,255,0.28); }
+.month-selector-btn .cal-icon { font-size: 1.1rem; }
+
+/* カレンダードロップダウン */
+.cal-dropdown {
+  position: absolute; top: 56px; right: 12px;
+  background: white; border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+  padding: 16px; z-index: 200; min-width: 260px;
+  animation: calFadeIn 0.15s ease;
+}
+@keyframes calFadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+.cal-dropdown.hidden { display: none; }
+
+.cal-year-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.cal-year-label { font-size: 1rem; font-weight: 700; color: #2d3748; }
+.cal-year-btn {
+  background: #edf2f7; border: none; border-radius: 50%;
+  width: 30px; height: 30px; cursor: pointer; font-size: 1rem; color: #4a5568;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.cal-year-btn:hover { background: #bee3f8; color: #2b6cb0; }
+
+.cal-months {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+}
+.cal-month-cell {
+  padding: 8px 4px; text-align: center; border-radius: 8px;
+  cursor: pointer; font-size: 0.88rem; font-weight: 600; color: #4a5568;
+  transition: all 0.15s; border: 2px solid transparent;
+}
+.cal-month-cell:hover { background: #ebf8ff; color: #2b6cb0; }
+.cal-month-cell.active {
+  background: #2b6cb0; color: white; border-color: #2c5282;
+}
+.cal-month-cell.today-month {
+  border-color: #90cdf4;
+}
+.cal-month-cell.has-data::after {
+  content: ''; display: block; width: 5px; height: 5px;
+  background: #38a169; border-radius: 50%; margin: 2px auto 0;
+}
+
+.cal-footer {
+  margin-top: 12px; padding-top: 10px; border-top: 1px solid #e2e8f0;
+  display: flex; justify-content: center;
+}
+.cal-today-btn {
+  background: #ebf8ff; border: none; border-radius: 8px;
+  padding: 6px 18px; cursor: pointer; font-size: 0.83rem;
+  color: #2b6cb0; font-weight: 700;
+}
+.cal-today-btn:hover { background: #bee3f8; }
+
+/* タブ */
+.tabs {
+  display: flex; background: white;
+  border-bottom: 2px solid #e2e8f0;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  padding: 12px 14px; cursor: pointer; font-size: 0.82rem;
+  white-space: nowrap; border-bottom: 3px solid transparent;
+  color: #718096; transition: all 0.2s; flex-shrink: 0;
+}
+.tab.active { border-bottom-color: #2b6cb0; color: #2b6cb0; font-weight: 700; }
+.tab:hover { background: #f7fafc; }
+
+/* コンテンツ */
+.content { padding: 14px; max-width: 900px; margin: 0 auto; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* カード */
+.card {
+  background: white; border-radius: 12px;
+  padding: 16px; margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.card h2 { font-size: 0.95rem; color: #2d3748; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+/* フォーム */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media(max-width: 540px) { .form-grid { grid-template-columns: 1fr; } }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label { font-size: 0.78rem; color: #718096; font-weight: 700; letter-spacing: 0.02em; }
+.form-group input, .form-group select, .form-group textarea {
+  padding: 10px 12px; border: 1.5px solid #e2e8f0;
+  border-radius: 8px; font-size: 0.92rem;
+  transition: border-color 0.2s; background: #f7fafc;
+  -webkit-appearance: none; appearance: none;
+  min-height: 44px; /* スマホタップしやすいサイズ */
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline: none; border-color: #2b6cb0; background: white;
+}
+.form-group.full { grid-column: 1 / -1; }
+
+/* datalist入力（管理会社・物件名） */
+.datalist-wrap { position: relative; }
+.datalist-wrap input { width: 100%; }
+
+/* ボタン */
+.btn {
+  padding: 12px 18px; border: none; border-radius: 8px;
+  cursor: pointer; font-size: 0.9rem; font-weight: 700;
+  transition: all 0.2s; min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-primary { background: #2b6cb0; color: white; }
+.btn-primary:hover { background: #2c5282; }
+.btn-primary:active { transform: scale(0.97); }
+.btn-success { background: #38a169; color: white; }
+.btn-success:hover { background: #276749; }
+.btn-danger { background: #e53e3e; color: white; padding: 6px 12px; font-size: 0.8rem; min-height: 36px; }
+.btn-danger:hover { background: #c53030; }
+.btn-outline { background: white; border: 1.5px solid #2b6cb0; color: #2b6cb0; }
+.btn-outline:hover { background: #ebf8ff; }
+.btn-sm { padding: 6px 12px; font-size: 0.8rem; min-height: 36px; }
+
+/* テーブル */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+th { background: #edf2f7; padding: 10px 10px; text-align: left; font-weight: 700; color: #4a5568; white-space: nowrap; }
+td { padding: 10px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+tr:hover td { background: #f7fafc; }
+.amount { text-align: right; font-weight: 600; color: #2b6cb0; }
+.badge {
+  display: inline-block; padding: 3px 10px;
+  border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+  white-space: nowrap;
+}
+
+/* サマリーカード */
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.summary-item {
+  background: linear-gradient(135deg, #ebf8ff, #e6f0ff);
+  border-radius: 10px; padding: 12px 14px; text-align: center;
+}
+.summary-item .label { font-size: 0.72rem; color: #4a5568; margin-bottom: 4px; }
+.summary-item .value { font-size: 1.15rem; font-weight: 700; color: #2b6cb0; }
+
+/* フィルターバー */
+.filter-bar {
+  display: flex; gap: 8px; align-items: center;
+  flex-wrap: wrap; margin-bottom: 14px;
+}
+.filter-bar select, .filter-bar input {
+  padding: 8px 10px; border: 1.5px solid #e2e8f0;
+  border-radius: 8px; font-size: 0.85rem; background: #f7fafc;
+  min-height: 40px; -webkit-appearance: none; appearance: none;
+}
+
+/* 棒グラフ */
+.bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 200px; padding: 0 4px; }
+.bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.bar { width: 100%; border-radius: 5px 5px 0 0; transition: all 0.4s; cursor: pointer; }
+.bar:hover { opacity: 0.8; }
+.bar-label { font-size: 0.65rem; color: #718096; }
+.bar-value { font-size: 0.62rem; color: #2b6cb0; font-weight: 700; text-align: center; min-height: 14px; }
+
+/* 円グラフ */
+.pie-wrap { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.pie-legend { flex: 1; min-width: 150px; }
+.legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.83rem; }
+.legend-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+
+/* 領収書プレビュー */
+.receipt-area {
+  border: 2px dashed #cbd5e0; border-radius: 10px;
+  padding: 16px; text-align: center; cursor: pointer;
+  transition: all 0.2s; background: #f7fafc;
+}
+.receipt-area:hover { border-color: #2b6cb0; background: #ebf8ff; }
+.receipt-preview { max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 8px; }
+.receipt-preview-wrap {
+  position: relative; display: inline-block;
+}
+.receipt-remove {
+  position: absolute; top: -8px; right: -8px;
+  background: #e53e3e; color: white; border: none;
+  border-radius: 50%; width: 22px; height: 22px;
+  cursor: pointer; font-size: 0.8rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.pdf-badge {
+  background: #fff5f5; border: 1.5px solid #fc8181;
+  border-radius: 8px; padding: 10px 14px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.85rem; color: #c53030; font-weight: 600;
+}
+
+/* 税計算 */
+.tax-display {
+  background: #f0fff4; border: 1.5px solid #9ae6b4;
+  border-radius: 8px; padding: 10px 14px;
+  display: flex; gap: 16px; flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+.tax-display span { color: #276749; font-weight: 600; }
+
+/* 通知 */
+.toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px);
+  background: #2d3748; color: white;
+  padding: 12px 22px; border-radius: 24px;
+  font-size: 0.9rem; font-weight: 600;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  opacity: 0; transition: all 0.3s; pointer-events: none;
+  z-index: 9999; white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.total-row td { font-weight: 700; background: #ebf8ff; color: #2b6cb0; }
+.empty-msg { text-align: center; color: #a0aec0; padding: 28px; font-size: 0.88rem; }
+
+/* モーダル（物件マスタ管理） */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 500; padding: 16px;
+}
+.modal-overlay.hidden { display: none; }
+.modal {
+  background: white; border-radius: 14px;
+  padding: 20px; width: 100%; max-width: 480px;
+  max-height: 80vh; overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+.modal h3 { font-size: 1rem; margin-bottom: 14px; }
+.master-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 8px;
+  margin-bottom: 6px; font-size: 0.88rem; gap: 8px;
+}
+.master-item .name { flex: 1; }
+.master-item .sub { color: #718096; font-size: 0.8rem; }
+
+/* 一覧のカード表示（スマホ向け） */
+@media(max-width: 600px) {
+  .expense-card {
+    border: 1px solid #e2e8f0; border-radius: 10px;
+    padding: 12px; margin-bottom: 10px;
+  }
+  .expense-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .expense-card-amount { font-size: 1.05rem; font-weight: 700; color: #2b6cb0; }
+  .expense-card-date { font-size: 0.78rem; color: #718096; }
+  .expense-card-body { font-size: 0.83rem; color: #4a5568; }
+  .expense-card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+  .desktop-table { display: none; }
+  .mobile-list { display: block; }
+}
+@media(min-width: 601px) {
+  .desktop-table { display: block; }
+  .mobile-list { display: none; }
+}
+
+/* 入力フォームの領収書アップロードエリア（スマホ強調） */
+.upload-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.upload-btn-cam, .upload-btn-pdf {
+  flex: 1; min-width: 120px; padding: 14px 10px;
+  border: 2px dashed #cbd5e0; border-radius: 10px;
+  background: #f7fafc; cursor: pointer;
+  text-align: center; font-size: 0.84rem; color: #4a5568;
+  transition: all 0.2s; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.upload-btn-cam:active, .upload-btn-pdf:active { background: #ebf8ff; border-color: #2b6cb0; }
+.upload-btn-cam:hover, .upload-btn-pdf:hover { border-color: #2b6cb0; background: #ebf8ff; color: #2b6cb0; }
+.upload-btn-cam .icon, .upload-btn-pdf .icon { font-size: 1.8rem; display: block; margin-bottom: 6px; }
+
+/* 領収書一覧 */
+.receipt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+@media(max-width:420px){ .receipt-grid { grid-template-columns: repeat(2, 1fr); } }
+.receipt-thumb {
+  border: 1.5px solid #e2e8f0; border-radius: 10px;
+  overflow: hidden; background: white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  cursor: pointer; transition: box-shadow 0.2s;
+}
+.receipt-thumb:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.13); }
+.receipt-thumb-img {
+  width: 100%; aspect-ratio: 4/3; object-fit: cover;
+  display: block; background: #edf2f7;
+}
+.receipt-thumb-pdf {
+  width: 100%; aspect-ratio: 4/3;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: #fff5f5; font-size: 2rem; color: #c53030;
+}
+.receipt-thumb-pdf span { font-size: 0.7rem; color: #c53030; margin-top: 4px; font-weight: 700; }
+.receipt-thumb-info {
+  padding: 8px 8px 6px;
+  border-top: 1px solid #f0f0f0;
+}
+.receipt-thumb-info .rdate { font-size: 0.72rem; color: #718096; }
+.receipt-thumb-info .rcat  { font-size: 0.78rem; font-weight: 700; color: #2d3748; margin-top: 2px; }
+.receipt-thumb-info .rmemo { font-size: 0.72rem; color: #a0aec0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 画像モーダル */
+.img-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 800; padding: 16px;
+}
+.img-modal-overlay.hidden { display: none; }
+.img-modal-inner {
+  position: relative; max-width: 96vw; max-height: 92vh;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.img-modal-inner img {
+  max-width: 90vw; max-height: 76vh;
+  border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  object-fit: contain; background: #1a202c;
+}
+.img-modal-close {
+  position: absolute; top: -12px; right: -12px;
+  background: #e53e3e; color: white; border: none;
+  border-radius: 50%; width: 32px; height: 32px;
+  cursor: pointer; font-size: 1rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.img-modal-meta {
+  background: rgba(255,255,255,0.1); color: white;
+  border-radius: 8px; padding: 8px 14px;
+  font-size: 0.83rem; text-align: center; width: 100%;
+}
+</style>
+</head>
+<body>
+
+<!-- ヘッダー -->
+<header>
+  <h1>📋 経費管理</h1>
+  <div class="header-right">
+    <button class="month-selector-btn" onclick="openApiKeyModal()" id="apikey-btn" title="OCR APIキー設定" style="padding:6px 10px;font-size:0.8rem;gap:4px;">
+      <span id="apikey-status-icon">🔑</span>
+    </button>
+    <button class="month-selector-btn" onclick="toggleCalendar(event)" id="month-selector-btn">
+      <span class="cal-icon">📅</span>
+      <span id="header-month-label">…</span>
+    </button>
+  </div>
+</header>
+
+<!-- カレンダードロップダウン -->
+<div class="cal-dropdown hidden" id="cal-dropdown">
+  <div class="cal-year-row">
+    <button class="cal-year-btn" onclick="calChangeYear(-1)">‹</button>
+    <span class="cal-year-label" id="cal-year-label">2026年</span>
+    <button class="cal-year-btn" onclick="calChangeYear(1)">›</button>
+  </div>
+  <div class="cal-months" id="cal-months"></div>
+  <div class="cal-footer">
+    <button class="cal-today-btn" onclick="calGoToday()">今月に戻る</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('input')">➕ 入力</div>
+  <div class="tab" onclick="switchTab('list')">📄 一覧</div>
+  <div class="tab" onclick="switchTab('receipts')">🧾 領収書</div>
+  <div class="tab" onclick="switchTab('monthly')">📊 月別</div>
+  <div class="tab" onclick="switchTab('category')">🗂 科目別</div>
+  <div class="tab" onclick="switchTab('master')">🏢 物件管理</div>
+</div>
+
+<div class="content">
+
+  <!-- ===== 経費入力 ===== -->
+  <div id="panel-input" class="panel active">
+    <div class="card">
+      <h2>📝 経費を入力する</h2>
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label>日付 *</label>
+          <input type="date" id="inp-date">
+        </div>
+
+        <div class="form-group">
+          <label>科目 *</label>
+          <select id="inp-category">
+            <option value="">選択してください</option>
+            <option value="交通費">🚃 交通費</option>
+            <option value="駐車場代">🅿️ 駐車場代</option>
+            <option value="材料費">🔧 材料費</option>
+            <option value="外注費">👷 外注費</option>
+            <option value="通信費">📱 通信費</option>
+            <option value="消耗品">📦 消耗品</option>
+            <option value="その他">📌 その他</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>管理会社</label>
+          <div class="datalist-wrap">
+            <input type="text" id="inp-company" list="company-list" placeholder="入力すると自動登録">
+            <datalist id="company-list"></datalist>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>物件名</label>
+          <div class="datalist-wrap">
+            <input type="text" id="inp-property" list="property-list" placeholder="入力すると自動登録">
+            <datalist id="property-list"></datalist>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>税抜き金額（円）*</label>
+          <input type="number" id="inp-amount" placeholder="例：1500" min="0" oninput="calcTax()">
+        </div>
+
+        <div class="form-group">
+          <label>消費税率</label>
+          <select id="inp-taxrate" onchange="calcTax()">
+            <option value="10">10%（通常）</option>
+            <option value="8">8%（軽減）</option>
+            <option value="0">非課税</option>
+          </select>
+        </div>
+
+        <div class="form-group full" id="tax-display-wrap" style="display:none;">
+          <div class="tax-display">
+            <span>消費税：<span id="tax-amount">0</span>円</span>
+            <span>税込合計：<span id="tax-total">0</span>円</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>支払方法</label>
+          <select id="inp-payment">
+            <option value="現金">現金</option>
+            <option value="クレジットカード">クレジットカード</option>
+            <option value="電子マネー">電子マネー</option>
+            <option value="振込">振込</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>領収書番号</label>
+          <input type="text" id="inp-receipt-no" placeholder="例：R-2026-001">
+        </div>
+
+        <div class="form-group full">
+          <label>摘要・備考</label>
+          <input type="text" id="inp-memo" placeholder="例：○○現場 交通費、材料購入 など">
+        </div>
+
+        <!-- 領収書アップロード -->
+        <div class="form-group full">
+          <label>領収書（写真・PDF）</label>
+          <!-- hidden inputs（labelと分離してスマホ誤動作を防ぐ） -->
+          <input type="file" id="inp-receipt-cam"  accept="image/*" capture="environment" style="display:none;" onchange="handleReceiptFileWithOCR(this)">
+          <input type="file" id="inp-receipt-file" accept="image/*,application/pdf" style="display:none;" onchange="handleReceiptFileWithOCR(this)">
+          <div class="upload-row">
+            <div class="upload-btn-cam" onclick="document.getElementById('inp-receipt-cam').click()">
+              <span class="icon">📷</span>カメラで撮影<br><span style="font-size:0.7rem;color:#38a169;font-weight:700;">✨ 自動読み取り</span>
+            </div>
+            <div class="upload-btn-pdf" onclick="document.getElementById('inp-receipt-file').click()">
+              <span class="icon">📁</span>ファイル選択<br><span style="font-size:0.72rem;color:#a0aec0;">画像・PDF</span>
+            </div>
+          </div>
+          <div id="receipt-preview-area" style="margin-top:8px;"></div>
+        </div>
+
+      </div>
+
+      <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="addExpense()">💾 登録する</button>
+        <button class="btn btn-outline" onclick="clearForm()">🗑 クリア</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📊 今月のサマリー <span id="summary-month-label" style="font-size:0.8rem;color:#718096;font-weight:400;"></span></h2>
+      <div class="summary-grid" id="this-month-summary"></div>
+    </div>
+  </div>
+
+  <!-- ===== 一覧 ===== -->
+  <div id="panel-list" class="panel">
+    <div class="card">
+      <h2>📄 経費一覧</h2>
+      <div class="filter-bar">
+        <select id="filter-year" onchange="renderList()"></select>
+        <select id="filter-month" onchange="renderList()">
+          <option value="">全月</option>
+        </select>
+        <select id="filter-cat" onchange="renderList()">
+          <option value="">全科目</option>
+          <option value="交通費">交通費</option>
+          <option value="駐車場代">駐車場代</option>
+          <option value="材料費">材料費</option>
+          <option value="外注費">外注費</option>
+          <option value="通信費">通信費</option>
+          <option value="消耗品">消耗品</option>
+          <option value="その他">その他</option>
+        </select>
+        <button class="btn btn-success btn-sm" onclick="exportCSV()" style="margin-left:auto;">📥 CSV</button>
+      </div>
+
+      <!-- PC向けテーブル -->
+      <div class="desktop-table">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>科目</th>
+                <th>管理会社</th>
+                <th>物件名</th>
+                <th>摘要</th>
+                <th>領収書No.</th>
+                <th>支払方法</th>
+                <th class="amount">税抜</th>
+                <th class="amount">税込</th>
+                <th>領収書</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="expense-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- スマホ向けカードリスト -->
+      <div class="mobile-list" id="expense-cards"></div>
+    </div>
+  </div>
+
+  <!-- ===== 領収書一覧 ===== -->
+  <div id="panel-receipts" class="panel">
+    <div class="card">
+      <h2>🧾 領収書一覧</h2>
+      <div class="filter-bar">
+        <select id="rec-year" onchange="renderReceipts()"></select>
+        <select id="rec-month" onchange="renderReceipts()">
+          <option value="">全月</option>
+        </select>
+        <span id="rec-count" style="font-size:0.82rem;color:#718096;margin-left:4px;"></span>
+      </div>
+      <div id="receipts-grid" class="receipt-grid"></div>
+    </div>
+  </div>
+
+  <!-- ===== 月別集計 ===== -->
+  <div id="panel-monthly" class="panel">
+    <div class="card">
+      <h2>📊 月別経費グラフ</h2>
+      <div style="margin-bottom:12px;">
+        <select id="chart-year" onchange="renderMonthly()"></select>
+      </div>
+      <div id="monthly-chart" class="bar-chart"></div>
+      <div style="text-align:center; margin-top:4px; font-size:0.72rem; color:#a0aec0;">月</div>
+    </div>
+    <div class="card">
+      <h2>📋 月別集計表</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>月</th>
+              <th class="amount">交通費</th>
+              <th class="amount">駐車場代</th>
+              <th class="amount">材料費</th>
+              <th class="amount">外注費</th>
+              <th class="amount">通信費</th>
+              <th class="amount">消耗品</th>
+              <th class="amount">その他</th>
+              <th class="amount">合計（税込）</th>
+            </tr>
+          </thead>
+          <tbody id="monthly-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 科目別 ===== -->
+  <div id="panel-category" class="panel">
+    <div class="card">
+      <h2>🗂 科目別集計</h2>
+      <div class="filter-bar">
+        <select id="cat-year" onchange="renderCategory()"></select>
+        <select id="cat-month" onchange="renderCategory()">
+          <option value="">全期間</option>
+        </select>
+      </div>
+      <div class="pie-wrap">
+        <canvas id="pie-canvas" width="200" height="200" style="flex-shrink:0;max-width:180px;max-height:180px;"></canvas>
+        <div class="pie-legend" id="pie-legend"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>科目</th><th class="amount">合計（税込）</th><th class="amount">件数</th><th class="amount">割合</th></tr></thead>
+          <tbody id="category-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 物件マスタ ===== -->
+  <div id="panel-master" class="panel">
+    <div class="card">
+      <h2>🏢 管理会社・物件名 一覧</h2>
+      <p style="font-size:0.83rem;color:#718096;margin-bottom:14px;">経費入力画面で新しい管理会社名・物件名を入力すると自動的にここに登録されます。</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div>
+          <div style="font-weight:700;font-size:0.88rem;margin-bottom:8px;color:#2d3748;">🏬 管理会社</div>
+          <div id="company-master-list"></div>
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:0.88rem;margin-bottom:8px;color:#2d3748;">🏠 物件名</div>
+          <div id="property-master-list"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;border-top:1px solid #e2e8f0;padding-top:14px;">
+        <div style="font-weight:700;font-size:0.88rem;margin-bottom:10px;">手動で追加</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="form-group" style="flex:1;min-width:140px;">
+            <label>管理会社名</label>
+            <input type="text" id="add-company" placeholder="例：○○管理㈱">
+          </div>
+          <div class="form-group" style="flex:1;min-width:140px;">
+            <label>物件名</label>
+            <input type="text" id="add-property" placeholder="例：△△マンション101">
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="addMasterManual()">追加</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<div class="toast" id="toast"></div>
+
+<!-- OCR読み取り中モーダル -->
+<div class="modal-overlay hidden" id="ocr-modal">
+  <div class="modal" style="max-width:420px;text-align:center;">
+    <div id="ocr-modal-content">
+      <div style="font-size:2.5rem;margin-bottom:12px;">🔍</div>
+      <div style="font-size:1rem;font-weight:700;color:#2d3748;margin-bottom:8px;">レシートを読み取り中...</div>
+      <div style="font-size:0.85rem;color:#718096;" id="ocr-status">画像を解析しています</div>
+      <div style="margin-top:16px;height:4px;background:#e2e8f0;border-radius:2px;overflow:hidden;">
+        <div id="ocr-progress-bar" style="height:100%;background:linear-gradient(90deg,#2b6cb0,#63b3ed);width:0%;transition:width 0.5s;border-radius:2px;"></div>
+      </div>
+    </div>
+    <div id="ocr-result-content" style="display:none;text-align:left;">
+      <div style="font-size:1rem;font-weight:700;color:#2d3748;margin-bottom:14px;text-align:center;">📋 読み取り結果</div>
+      <div id="ocr-result-fields"></div>
+      <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+        <button class="btn btn-primary" style="flex:1;" onclick="applyOcrResult()">✅ この内容で入力する</button>
+        <button class="btn btn-outline" style="flex:1;" onclick="closeOcrModal()">✏️ 手動で入力</button>
+      </div>
+    </div>
+    <div id="ocr-error-content" style="display:none;text-align:center;">
+      <div style="font-size:2rem;margin-bottom:8px;">⚠️</div>
+      <div style="font-size:0.88rem;color:#718096;margin-bottom:16px;" id="ocr-error-msg">読み取りに失敗しました</div>
+      <button class="btn btn-outline" onclick="closeOcrModal()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- APIキー設定モーダル -->
+<div class="modal-overlay hidden" id="apikey-modal">
+  <div class="modal" style="max-width:420px;">
+    <h3>🔑 Gemini API キー設定</h3>
+    <p style="font-size:0.83rem;color:#718096;margin-bottom:14px;">
+      レシートの高精度自動読み取りにはGemini APIキーが必要です。<br>
+      キーはこの端末内にのみ保存されます。外部にはGoogleのサーバー以外には送信されません。
+    </p>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label>Google Gemini API キー</label>
+      <input type="password" id="apikey-input" placeholder="AIza..." style="font-family:monospace;font-size:0.85rem;">
+    </div>
+    <p style="font-size:0.78rem;color:#a0aec0;margin-bottom:14px;">
+      ※ APIキーは <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#2b6cb0;">aistudio.google.com/apikey</a> で無料取得できます。<br>
+      無料枠：1日1500リクエスト・1分60リクエスト
+    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary" style="flex:1;" onclick="saveApiKey()">💾 保存</button>
+      <button class="btn btn-outline" style="flex:1;" onclick="closeApiKeyModal()">キャンセル</button>
+    </div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid #e2e8f0;">
+      <button class="btn btn-danger btn-sm" onclick="clearApiKey()">🗑 APIキーを削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- 画像拡大モーダル -->
+<div class="img-modal-overlay hidden" id="img-modal" onclick="closeImgModal(event)">
+  <div class="img-modal-inner">
+    <button class="img-modal-close" onclick="closeImgModal()">✕</button>
+    <img id="img-modal-img" src="" alt="領収書">
+    <div class="img-modal-meta" id="img-modal-meta"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 定数・ストレージ
+// ============================================================
+const STORAGE_EXPENSES = 'keihiData_v2';
+const STORAGE_MASTER   = 'keihiMaster_v1';
+const CATEGORIES = ['交通費','駐車場代','材料費','外注費','通信費','消耗品','その他'];
+const CAT_COLORS = ['#3182ce','#38a169','#e53e3e','#d69e2e','#805ad5','#dd6b20','#718096'];
+const CAT_EMOJI  = ['🚃','🅿️','🔧','👷','📱','📦','📌'];
+
+function loadExpenses() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_EXPENSES)) || []; } catch { return []; }
+}
+function savExp(d) { localStorage.setItem(STORAGE_EXPENSES, JSON.stringify(d)); }
+
+function loadMaster() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_MASTER)) || { companies:[], properties:[] }; }
+  catch { return { companies:[], properties:[] }; }
+}
+function savMaster(m) { localStorage.setItem(STORAGE_MASTER, JSON.stringify(m)); }
+
+let expenses = loadExpenses();
+let master   = loadMaster();
+
+// 選択中の月（ヘッダー）
+let selYear  = new Date().getFullYear();
+let selMonth = new Date().getMonth() + 1; // 1-12
+
+// ============================================================
+// ユーティリティ
+// ============================================================
+function genId() { return Date.now() + Math.random().toString(36).slice(2); }
+function fmt(n)  { return Number(n).toLocaleString('ja-JP') + '円'; }
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function pad(n) { return String(n).padStart(2,'0'); }
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color || '#2d3748';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+// ============================================================
+// カレンダー型月選択
+// ============================================================
+let calTempYear = selYear; // カレンダー内で閲覧中の年（まだ確定前）
+
+function initHeaderMonth() {
+  calTempYear = selYear;
+  updateHeaderLabel();
+  renderCalMonths();
+}
+
+function updateHeaderLabel() {
+  document.getElementById('header-month-label').textContent = `${selYear}年${selMonth}月`;
+}
+
+function toggleCalendar(e) {
+  e.stopPropagation();
+  const cal = document.getElementById('cal-dropdown');
+  const isHidden = cal.classList.contains('hidden');
+  if(isHidden) {
+    calTempYear = selYear;
+    renderCalMonths();
+    cal.classList.remove('hidden');
+  } else {
+    cal.classList.add('hidden');
+  }
+}
+
+function renderCalMonths() {
+  document.getElementById('cal-year-label').textContent = `${calTempYear}年`;
+  const nowY = new Date().getFullYear();
+  const nowM = new Date().getMonth() + 1;
+
+  // データがある年月セットを取得
+  const dataMonths = new Set(expenses.map(e => e.date.slice(0,7)));
+
+  const months = [...Array(12)].map((_,i) => i+1);
+  document.getElementById('cal-months').innerHTML = months.map(m => {
+    const isActive  = (calTempYear === selYear && m === selMonth);
+    const isToday   = (calTempYear === nowY && m === nowM);
+    const hasData   = dataMonths.has(`${calTempYear}-${pad(m)}`);
+    let cls = 'cal-month-cell';
+    if(isActive) cls += ' active';
+    if(isToday && !isActive) cls += ' today-month';
+    if(hasData && !isActive) cls += ' has-data';
+    return `<div class="${cls}" onclick="calSelectMonth(${m})">${m}月</div>`;
+  }).join('');
+}
+
+function calSelectMonth(m) {
+  selYear  = calTempYear;
+  selMonth = m;
+  updateHeaderLabel();
+  document.getElementById('cal-dropdown').classList.add('hidden');
+  onCalChange();
+}
+
+function calChangeYear(delta) {
+  calTempYear += delta;
+  renderCalMonths();
+}
+
+function calGoToday() {
+  const now = new Date();
+  selYear   = now.getFullYear();
+  selMonth  = now.getMonth() + 1;
+  calTempYear = selYear;
+  updateHeaderLabel();
+  document.getElementById('cal-dropdown').classList.add('hidden');
+  onCalChange();
+}
+
+function onCalChange() {
+  renderSummary();
+  const active = document.querySelector('.panel.active');
+  if(active?.id === 'panel-list')     { populateFilterYears(); renderList(); }
+  if(active?.id === 'panel-monthly')  { populateChartYear();  renderMonthly(); }
+  if(active?.id === 'panel-category') { populateCatYear();    renderCategory(); }
+  if(active?.id === 'panel-receipts') { populateRecYears();   renderReceipts(); }
+}
+
+// カレンダー外クリックで閉じる
+document.addEventListener('click', e => {
+  const cal = document.getElementById('cal-dropdown');
+  const btn = document.getElementById('month-selector-btn');
+  if(!cal.contains(e.target) && !btn.contains(e.target)) {
+    cal.classList.add('hidden');
+  }
+});
+
+// ============================================================
+// タブ切り替え
+// ============================================================
+function switchTab(name) {
+  const names = ['input','list','receipts','monthly','category','master'];
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', names[i]===name));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  if(name==='input')    { renderSummary(); }
+  if(name==='list')     { populateFilterYears(); renderList(); }
+  if(name==='receipts') { populateRecYears(); renderReceipts(); }
+  if(name==='monthly')  { populateChartYear(); renderMonthly(); }
+  if(name==='category') { populateCatYear(); renderCategory(); }
+  if(name==='master')   renderMaster();
+}
+
+// ============================================================
+// マスタ（datalist更新）
+// ============================================================
+function refreshDatalist() {
+  document.getElementById('company-list').innerHTML =
+    master.companies.map(c=>`<option value="${c}">`).join('');
+  document.getElementById('property-list').innerHTML =
+    master.properties.map(p=>`<option value="${p}">`).join('');
+}
+function autoRegisterMaster(company, property) {
+  let changed = false;
+  if(company && !master.companies.includes(company)) {
+    master.companies.push(company); changed = true;
+  }
+  if(property && !master.properties.includes(property)) {
+    master.properties.push(property); changed = true;
+  }
+  if(changed) { savMaster(master); refreshDatalist(); }
+}
+function addMasterManual() {
+  const c = document.getElementById('add-company').value.trim();
+  const p = document.getElementById('add-property').value.trim();
+  if(!c && !p) { showToast('⚠️ 管理会社か物件名を入力してください','#e53e3e'); return; }
+  autoRegisterMaster(c, p);
+  document.getElementById('add-company').value = '';
+  document.getElementById('add-property').value = '';
+  renderMaster();
+  showToast('✅ 登録しました！','#38a169');
+}
+function deleteMaster(type, val) {
+  if(!confirm(`「${val}」を削除しますか？`)) return;
+  if(type==='company')  master.companies  = master.companies.filter(x=>x!==val);
+  if(type==='property') master.properties = master.properties.filter(x=>x!==val);
+  savMaster(master); refreshDatalist(); renderMaster();
+  showToast('🗑 削除しました');
+}
+function renderMaster() {
+  const listHtml = (arr, type) => arr.length===0
+    ? '<div style="color:#a0aec0;font-size:0.83rem;padding:8px;">未登録</div>'
+    : arr.map(v=>`<div class="master-item">
+        <span class="name">${v}</span>
+        <button class="btn btn-danger btn-sm" onclick="deleteMaster('${type}','${v.replace(/'/g,"\\'")}')">削除</button>
+      </div>`).join('');
+  document.getElementById('company-master-list').innerHTML  = listHtml(master.companies, 'company');
+  document.getElementById('property-master-list').innerHTML = listHtml(master.properties, 'property');
+}
+
+// ============================================================
+// 消費税計算
+// ============================================================
+function calcTax() {
+  const amount  = parseFloat(document.getElementById('inp-amount').value) || 0;
+  const taxrate = parseInt(document.getElementById('inp-taxrate').value) || 0;
+  const tax     = Math.floor(amount * taxrate / 100);
+  const total   = amount + tax;
+  const wrap    = document.getElementById('tax-display-wrap');
+  if(amount > 0) {
+    wrap.style.display = 'block';
+    document.getElementById('tax-amount').textContent = tax.toLocaleString();
+    document.getElementById('tax-total').textContent  = total.toLocaleString();
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+function getTaxIncluded(amount, taxrate) {
+  return amount + Math.floor(amount * taxrate / 100);
+}
+
+// ============================================================
+// 領収書ファイル処理
+// ============================================================
+let receiptData = null; // { type:'image'|'pdf', name:string, data:base64 }
+
+function handleReceiptFile(input) {
+  const file = input.files[0];
+  if(!file) return;
+  if(file.size > 5 * 1024 * 1024) {
+    showToast('⚠️ ファイルサイズは5MB以下にしてください','#e53e3e'); return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const isPdf = file.type === 'application/pdf';
+    receiptData = { type: isPdf ? 'pdf' : 'image', name: file.name, data: e.target.result };
+    renderReceiptPreview();
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+function renderReceiptPreview() {
+  const area = document.getElementById('receipt-preview-area');
+  if(!receiptData) { area.innerHTML = ''; return; }
+  if(receiptData.type === 'image') {
+    area.innerHTML = `<div class="receipt-preview-wrap">
+      <img src="${receiptData.data}" class="receipt-preview" alt="領収書">
+      <button class="receipt-remove" onclick="removeReceipt()" title="削除">✕</button>
+    </div>`;
+  } else {
+    area.innerHTML = `<div class="pdf-badge">
+      📄 ${receiptData.name}
+      <button class="btn btn-danger btn-sm" onclick="removeReceipt()" style="margin-left:auto;">✕ 削除</button>
+    </div>`;
+  }
+}
+
+function removeReceipt() {
+  receiptData = null;
+  renderReceiptPreview();
+}
+
+// ============================================================
+// 経費入力
+// ============================================================
+document.getElementById('inp-date').value = today();
+
+function addExpense() {
+  const date      = document.getElementById('inp-date').value;
+  const category  = document.getElementById('inp-category').value;
+  const company   = document.getElementById('inp-company').value.trim();
+  const property  = document.getElementById('inp-property').value.trim();
+  const amount    = parseFloat(document.getElementById('inp-amount').value);
+  const taxrate   = parseInt(document.getElementById('inp-taxrate').value);
+  const payment   = document.getElementById('inp-payment').value;
+  const receiptNo = document.getElementById('inp-receipt-no').value.trim();
+  const memo      = document.getElementById('inp-memo').value.trim();
+
+  if(!date)              { showToast('⚠️ 日付を入力してください','#e53e3e'); return; }
+  if(!category)          { showToast('⚠️ 科目を選択してください','#e53e3e'); return; }
+  if(!amount || amount<=0){ showToast('⚠️ 金額を入力してください','#e53e3e'); return; }
+
+  const taxAmount  = Math.floor(amount * taxrate / 100);
+  const totalAmount = amount + taxAmount;
+
+  const entry = {
+    id: genId(), date, category, company, property,
+    amount, taxrate, taxAmount, totalAmount,
+    payment, receiptNo, memo,
+    receipt: receiptData ? { type: receiptData.type, name: receiptData.name, data: receiptData.data } : null
+  };
+  expenses.push(entry);
+  savExp(expenses);
+  autoRegisterMaster(company, property);
+  renderSummary();
+  clearForm();
+  showToast('✅ 登録しました！','#38a169');
+}
+
+function clearForm() {
+  document.getElementById('inp-date').value = today();
+  document.getElementById('inp-category').value = '';
+  document.getElementById('inp-company').value = '';
+  document.getElementById('inp-property').value = '';
+  document.getElementById('inp-amount').value = '';
+  document.getElementById('inp-taxrate').value = '10';
+  document.getElementById('inp-payment').value = '現金';
+  document.getElementById('inp-receipt-no').value = '';
+  document.getElementById('inp-memo').value = '';
+  document.getElementById('tax-display-wrap').style.display = 'none';
+  receiptData = null;
+  renderReceiptPreview();
+}
+
+// ============================================================
+// サマリー（ヘッダーの月に連動）
+// ============================================================
+function renderSummary() {
+  const ym = `${selYear}-${pad(selMonth)}`;
+  document.getElementById('summary-month-label').textContent = `${selYear}年${selMonth}月`;
+  const thisMonth = expenses.filter(e => e.date.startsWith(ym));
+  const total     = thisMonth.reduce((s,e)=>s+(e.totalAmount||e.amount),0);
+  const bycat = {};
+  CATEGORIES.forEach(c=>bycat[c]=0);
+  thisMonth.forEach(e=>{ if(bycat[e.category]!==undefined) bycat[e.category]+=(e.totalAmount||e.amount); });
+  const topCat = Object.entries(bycat).sort((a,b)=>b[1]-a[1])[0];
+
+  document.getElementById('this-month-summary').innerHTML = `
+    <div class="summary-item">
+      <div class="label">${selYear}年${selMonth}月 合計（税込）</div>
+      <div class="value">${total.toLocaleString()}円</div>
+    </div>
+    <div class="summary-item">
+      <div class="label">件数</div>
+      <div class="value">${thisMonth.length}件</div>
+    </div>
+    <div class="summary-item">
+      <div class="label">最多科目</div>
+      <div class="value" style="font-size:0.95rem;">${topCat&&topCat[1]>0?topCat[0]:'-'}</div>
+    </div>
+  `;
+}
+
+// ============================================================
+// 年/月フィルター初期化
+// ============================================================
+function getYears() {
+  const s = new Set(expenses.map(e=>e.date.slice(0,4)));
+  s.add(String(new Date().getFullYear()));
+  return [...s].sort().reverse();
+}
+function populateFilterYears() {
+  const years = getYears();
+  const el = document.getElementById('filter-year');
+  const prev = el.value;
+  el.innerHTML = years.map(y=>`<option value="${y}">${y}年</option>`).join('');
+  if(prev) el.value = prev; else el.value = String(selYear);
+
+  const mel = document.getElementById('filter-month');
+  const mprev = mel.value;
+  mel.innerHTML = '<option value="">全月</option>'+
+    [...Array(12)].map((_,i)=>`<option value="${pad(i+1)}">${i+1}月</option>`).join('');
+  if(mprev) mel.value = mprev; else mel.value = pad(selMonth);
+}
+function populateChartYear() {
+  const years = getYears();
+  const el = document.getElementById('chart-year');
+  const prev = el.value;
+  el.innerHTML = years.map(y=>`<option value="${y}">${y}年</option>`).join('');
+  if(prev) el.value = prev; else el.value = String(selYear);
+}
+function populateCatYear() {
+  const years = getYears();
+  const el = document.getElementById('cat-year');
+  const prev = el.value;
+  el.innerHTML = years.map(y=>`<option value="${y}">${y}年</option>`).join('');
+  if(prev) el.value = prev; else el.value = String(selYear);
+
+  const mel = document.getElementById('cat-month');
+  const mprev = mel.value;
+  mel.innerHTML = '<option value="">全期間</option>'+
+    [...Array(12)].map((_,i)=>`<option value="${pad(i+1)}">${i+1}月</option>`).join('');
+  if(mprev) mel.value = mprev;
+}
+
+// ============================================================
+// 一覧
+// ============================================================
+function renderList() {
+  const year  = document.getElementById('filter-year')?.value || '';
+  const month = document.getElementById('filter-month')?.value || '';
+  const cat   = document.getElementById('filter-cat')?.value || '';
+
+  let filtered = [...expenses].sort((a,b)=>b.date.localeCompare(a.date));
+  if(year)  filtered = filtered.filter(e=>e.date.startsWith(year));
+  if(month) filtered = filtered.filter(e=>e.date.slice(5,7)===month);
+  if(cat)   filtered = filtered.filter(e=>e.category===cat);
+
+  const totalEx  = filtered.reduce((s,e)=>s+e.amount,0);
+  const totalInc = filtered.reduce((s,e)=>s+(e.totalAmount||e.amount),0);
+
+  // PC テーブル
+  const tbody = document.getElementById('expense-table');
+  if(filtered.length===0) {
+    tbody.innerHTML = `<tr><td colspan="11" class="empty-msg">データがありません</td></tr>`;
+  } else {
+    tbody.innerHTML = filtered.map(e=>{
+      const ci = CATEGORIES.indexOf(e.category);
+      const color = ci>=0?CAT_COLORS[ci]:'#718096';
+      const emoji = ci>=0?CAT_EMOJI[ci]:'📌';
+      const receiptBtn = e.receipt
+        ? `<button class="btn btn-outline btn-sm" onclick="viewReceipt('${e.id}')">表示</button>`
+        : '-';
+      return `<tr>
+        <td style="white-space:nowrap;">${e.date}</td>
+        <td><span class="badge" style="background:${color}20;color:${color}">${emoji} ${e.category}</span></td>
+        <td>${e.company||'-'}</td>
+        <td>${e.property||'-'}</td>
+        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.memo||'-'}</td>
+        <td>${e.receiptNo||'-'}</td>
+        <td>${e.payment}</td>
+        <td class="amount">${e.amount.toLocaleString()}円</td>
+        <td class="amount">${(e.totalAmount||e.amount).toLocaleString()}円</td>
+        <td>${receiptBtn}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}')">削除</button></td>
+      </tr>`;
+    }).join('') +
+    `<tr class="total-row">
+      <td colspan="7">合計（${filtered.length}件）</td>
+      <td class="amount">${totalEx.toLocaleString()}円</td>
+      <td class="amount">${totalInc.toLocaleString()}円</td>
+      <td></td><td></td>
+    </tr>`;
+  }
+
+  // スマホ カードリスト
+  const cards = document.getElementById('expense-cards');
+  if(filtered.length===0) {
+    cards.innerHTML = `<div class="empty-msg">データがありません</div>`;
+  } else {
+    cards.innerHTML = filtered.map(e=>{
+      const ci = CATEGORIES.indexOf(e.category);
+      const color = ci>=0?CAT_COLORS[ci]:'#718096';
+      const emoji = ci>=0?CAT_EMOJI[ci]:'📌';
+      const total = (e.totalAmount||e.amount).toLocaleString();
+      return `<div class="expense-card">
+        <div class="expense-card-header">
+          <div>
+            <span class="badge" style="background:${color}20;color:${color}">${emoji} ${e.category}</span>
+            ${e.receiptNo?`<span style="font-size:0.75rem;color:#718096;margin-left:6px;">No.${e.receiptNo}</span>`:''}
+          </div>
+          <div class="expense-card-amount">${total}円</div>
+        </div>
+        <div class="expense-card-body">
+          ${e.company?`<div>🏬 ${e.company}</div>`:''}
+          ${e.property?`<div>🏠 ${e.property}</div>`:''}
+          ${e.memo?`<div>📝 ${e.memo}</div>`:''}
+        </div>
+        <div class="expense-card-footer">
+          <span class="expense-card-date">${e.date}　${e.payment}</span>
+          <div style="display:flex;gap:6px;">
+            ${e.receipt?`<button class="btn btn-outline btn-sm" onclick="viewReceipt('${e.id}')">📷</button>`:''}
+            <button class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}')">削除</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function deleteExpense(id) {
+  if(!confirm('この経費を削除しますか？')) return;
+  expenses = expenses.filter(e=>e.id!==id);
+  savExp(expenses);
+  renderList();
+  renderSummary();
+  showToast('🗑 削除しました');
+}
+
+function viewReceipt(id) { openReceiptModal(id); }
+
+// ============================================================
+// CSVエクスポート
+// ============================================================
+function exportCSV() {
+  const year  = document.getElementById('filter-year')?.value || '';
+  const month = document.getElementById('filter-month')?.value || '';
+  const cat   = document.getElementById('filter-cat')?.value || '';
+
+  let filtered = [...expenses].sort((a,b)=>a.date.localeCompare(b.date));
+  if(year)  filtered = filtered.filter(e=>e.date.startsWith(year));
+  if(month) filtered = filtered.filter(e=>e.date.slice(5,7)===month);
+  if(cat)   filtered = filtered.filter(e=>e.category===cat);
+  if(filtered.length===0){ showToast('⚠️ データがありません','#e53e3e'); return; }
+
+  const rows = [['日付','科目','管理会社','物件名','摘要','領収書No.','支払方法','税抜金額','消費税率(%)','消費税額','税込金額']];
+  filtered.forEach(e=>rows.push([
+    e.date, e.category, e.company||'', e.property||'', e.memo||'',
+    e.receiptNo||'', e.payment,
+    e.amount, e.taxrate||10, e.taxAmount||0, e.totalAmount||e.amount
+  ]));
+  const csv = '﻿' + rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  const label = [year, month?month+'月':''].filter(Boolean).join('-') || '全期間';
+  a.download = `経費データ_${label}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📥 CSVをダウンロードしました','#2b6cb0');
+}
+
+// ============================================================
+// 領収書一覧
+// ============================================================
+function populateRecYears() {
+  const years = getYears();
+  const yel = document.getElementById('rec-year');
+  const prev = yel.value;
+  yel.innerHTML = ['<option value="">全年</option>'].concat(years.map(y=>`<option value="${y}">${y}年</option>`)).join('');
+  if(prev) yel.value = prev;
+
+  const mel = document.getElementById('rec-month');
+  const mprev = mel.value;
+  mel.innerHTML = '<option value="">全月</option>' +
+    [...Array(12)].map((_,i)=>`<option value="${pad(i+1)}">${i+1}月</option>`).join('');
+  if(mprev) mel.value = mprev;
+}
+
+function renderReceipts() {
+  const year  = document.getElementById('rec-year')?.value  || '';
+  const month = document.getElementById('rec-month')?.value || '';
+
+  let filtered = [...expenses]
+    .filter(e => e.receipt)
+    .sort((a,b) => b.date.localeCompare(a.date));
+  if(year)  filtered = filtered.filter(e => e.date.startsWith(year));
+  if(month) filtered = filtered.filter(e => e.date.slice(5,7) === month);
+
+  const countEl = document.getElementById('rec-count');
+  countEl.textContent = filtered.length > 0 ? `${filtered.length}件` : '';
+
+  const grid = document.getElementById('receipts-grid');
+  if(filtered.length === 0) {
+    grid.innerHTML = `<div class="empty-msg" style="grid-column:1/-1;">領収書がありません<br><span style="font-size:0.8rem;">経費入力時に写真またはPDFを添付すると表示されます</span></div>`;
+    return;
+  }
+
+  const ci = name => CATEGORIES.indexOf(name);
+  grid.innerHTML = filtered.map(e => {
+    const color = ci(e.category)>=0 ? CAT_COLORS[ci(e.category)] : '#718096';
+    const emoji = ci(e.category)>=0 ? CAT_EMOJI[ci(e.category)] : '📌';
+    const thumb = e.receipt.type === 'image'
+      ? `<img class="receipt-thumb-img" src="${e.receipt.data}" alt="領収書" loading="lazy">`
+      : `<div class="receipt-thumb-pdf"><span>📄</span><span>PDF</span></div>`;
+    const metaText = `${e.date}　${e.category}　${(e.totalAmount||e.amount).toLocaleString()}円${e.receiptNo?' (No.'+e.receiptNo+')':''}${e.property?' 【'+e.property+'】':''}`;
+    return `<div class="receipt-thumb" onclick="openReceiptModal('${e.id}')">
+      ${thumb}
+      <div class="receipt-thumb-info">
+        <div class="rdate">${e.date}</div>
+        <div class="rcat"><span style="color:${color}">${emoji}</span> ${e.category}</div>
+        ${e.property ? `<div class="rmemo">🏠 ${e.property}</div>` : ''}
+        ${e.memo     ? `<div class="rmemo">${e.memo}</div>` : ''}
+        <div style="font-size:0.78rem;font-weight:700;color:#2b6cb0;margin-top:2px;">${(e.totalAmount||e.amount).toLocaleString()}円</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openReceiptModal(id) {
+  const e = expenses.find(x => x.id === id);
+  if(!e || !e.receipt) return;
+  if(e.receipt.type === 'pdf') {
+    // PDFは別タブで開く
+    const w = window.open();
+    w.document.write(`<html><body style="margin:0;height:100vh;"><iframe src="${e.receipt.data}" style="width:100%;height:100%;border:none;"></iframe></body></html>`);
+    return;
+  }
+  // 画像はモーダルで表示
+  document.getElementById('img-modal-img').src = e.receipt.data;
+  document.getElementById('img-modal-meta').textContent =
+    `${e.date}　${e.category}　${(e.totalAmount||e.amount).toLocaleString()}円` +
+    (e.receiptNo ? `　No.${e.receiptNo}` : '') +
+    (e.property  ? `　【${e.property}】` : '') +
+    (e.memo      ? `　${e.memo}` : '');
+  document.getElementById('img-modal').classList.remove('hidden');
+}
+
+function closeImgModal(event) {
+  if(event && event.target !== document.getElementById('img-modal')) return;
+  document.getElementById('img-modal').classList.add('hidden');
+  document.getElementById('img-modal-img').src = '';
+}
+
+// キーボードEscで閉じる
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeImgModal(); });
+
+// ============================================================
+// 月別集計
+// ============================================================
+function renderMonthly() {
+  const year   = document.getElementById('chart-year')?.value || String(selYear);
+  const months = [...Array(12)].map((_,i)=>pad(i+1));
+
+  const table = {};
+  months.forEach(m=>{ table[m]={};  CATEGORIES.forEach(c=>table[m][c]=0); });
+  expenses.filter(e=>e.date.startsWith(year)).forEach(e=>{
+    const m = e.date.slice(5,7);
+    if(table[m]&&table[m][e.category]!==undefined) table[m][e.category]+=(e.totalAmount||e.amount);
+  });
+
+  const totals = months.map(m=>CATEGORIES.reduce((s,c)=>s+table[m][c],0));
+  const maxVal = Math.max(...totals,1);
+  document.getElementById('monthly-chart').innerHTML = months.map((m,i)=>{
+    const h = Math.max(Math.round((totals[i]/maxVal)*175),totals[i]>0?4:0);
+    return `<div class="bar-wrap">
+      <div class="bar-value">${totals[i]>0?(totals[i]/10000).toFixed(1)+'万':''}</div>
+      <div class="bar" style="height:${h}px;background:linear-gradient(180deg,#63b3ed,#2b6cb0);" title="${parseInt(m)}月: ${fmt(totals[i])}"></div>
+      <div class="bar-label">${parseInt(m)}</div>
+    </div>`;
+  }).join('');
+
+  const yearTotal={}; CATEGORIES.forEach(c=>yearTotal[c]=0); let grand=0;
+  const tbody = document.getElementById('monthly-table');
+  tbody.innerHTML = months.map(m=>{
+    const rowTotal=CATEGORIES.reduce((s,c)=>s+table[m][c],0);
+    if(rowTotal===0) return '';
+    CATEGORIES.forEach(c=>yearTotal[c]+=table[m][c]); grand+=rowTotal;
+    return `<tr>
+      <td style="white-space:nowrap;">${parseInt(m)}月</td>
+      ${CATEGORIES.map(c=>`<td class="amount">${table[m][c]>0?table[m][c].toLocaleString()+'円':'-'}</td>`).join('')}
+      <td class="amount" style="font-weight:700;">${rowTotal.toLocaleString()}円</td>
+    </tr>`;
+  }).join('') + (grand>0
+    ? `<tr class="total-row"><td>年計</td>${CATEGORIES.map(c=>`<td class="amount">${yearTotal[c]>0?yearTotal[c].toLocaleString()+'円':'-'}</td>`).join('')}<td class="amount">${grand.toLocaleString()}円</td></tr>`
+    : `<tr><td colspan="9" class="empty-msg">データがありません</td></tr>`);
+}
+
+// ============================================================
+// 科目別集計
+// ============================================================
+function renderCategory() {
+  const year  = document.getElementById('cat-year')?.value || String(selYear);
+  const month = document.getElementById('cat-month')?.value || '';
+
+  let filtered = expenses.filter(e=>e.date.startsWith(year));
+  if(month) filtered = filtered.filter(e=>e.date.slice(5,7)===month);
+
+  const bycat={};
+  CATEGORIES.forEach(c=>bycat[c]={total:0,count:0});
+  filtered.forEach(e=>{ if(bycat[e.category]){ bycat[e.category].total+=(e.totalAmount||e.amount); bycat[e.category].count++; } });
+
+  const grand = filtered.reduce((s,e)=>s+(e.totalAmount||e.amount),0);
+  const sorted = CATEGORIES.map((c,i)=>({name:c,color:CAT_COLORS[i],emoji:CAT_EMOJI[i],...bycat[c]}))
+    .filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
+
+  document.getElementById('category-table').innerHTML = sorted.length===0
+    ? `<tr><td colspan="4" class="empty-msg">データがありません</td></tr>`
+    : sorted.map(x=>`<tr>
+        <td><span class="badge" style="background:${x.color}20;color:${x.color}">${x.emoji} ${x.name}</span></td>
+        <td class="amount">${x.total.toLocaleString()}円</td>
+        <td class="amount">${x.count}件</td>
+        <td class="amount">${grand>0?Math.round(x.total/grand*100):0}%</td>
+      </tr>`).join('') +
+    `<tr class="total-row"><td>合計</td><td class="amount">${grand.toLocaleString()}円</td><td class="amount">${filtered.length}件</td><td class="amount">100%</td></tr>`;
+
+  drawPie(sorted, grand);
+  document.getElementById('pie-legend').innerHTML = sorted.map(x=>
+    `<div class="legend-item">
+      <div class="legend-dot" style="background:${x.color}"></div>
+      <span>${x.emoji} ${x.name}</span>
+      <span style="margin-left:auto;font-weight:700;">${grand>0?Math.round(x.total/grand*100):0}%</span>
+    </div>`
+  ).join('') || '<span style="color:#a0aec0;font-size:0.83rem;">データがありません</span>';
+}
+
+function drawPie(data,total) {
+  const canvas=document.getElementById('pie-canvas');
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,200,200);
+  if(total===0||data.length===0){
+    ctx.fillStyle='#e2e8f0'; ctx.beginPath(); ctx.arc(100,100,80,0,Math.PI*2); ctx.fill();
+    return;
+  }
+  let start=-Math.PI/2;
+  data.forEach(x=>{
+    const s=(x.total/total)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(100,100); ctx.arc(100,100,80,start,start+s); ctx.closePath();
+    ctx.fillStyle=x.color; ctx.fill();
+    ctx.strokeStyle='white'; ctx.lineWidth=2; ctx.stroke();
+    start+=s;
+  });
+  ctx.beginPath(); ctx.arc(100,100,48,0,Math.PI*2); ctx.fillStyle='white'; ctx.fill();
+  ctx.fillStyle='#2d3748'; ctx.font='bold 12px sans-serif'; ctx.textAlign='center';
+  ctx.fillText(total.toLocaleString()+'円',100,96);
+  ctx.font='10px sans-serif'; ctx.fillStyle='#718096';
+  ctx.fillText('合計（税込）',100,112);
+}
+
+// ============================================================
+// OCR・自動読み取り機能
+// ============================================================
+const STORAGE_APIKEY = 'geminiApiKey_v1';
+let ocrPendingData = null; // OCR後に適用する画像データ
+let ocrResult = null;      // 読み取り結果
+
+function loadApiKey() {
+  try { return localStorage.getItem(STORAGE_APIKEY) || ''; } catch { return ''; }
+}
+function saveApiKey() {
+  const key = document.getElementById('apikey-input').value.trim();
+  if(!key) { showToast('⚠️ APIキーを入力してください','#e53e3e'); return; }
+  if(!key.startsWith('AIza')) { showToast('⚠️ 正しいGemini APIキーを入力してください（AIzaで始まります）','#e53e3e'); return; }
+  localStorage.setItem(STORAGE_APIKEY, key);
+  updateApiKeyStatus();
+  closeApiKeyModal();
+  showToast('✅ APIキーを保存しました','#38a169');
+}
+function clearApiKey() {
+  if(!confirm('APIキーを削除しますか？')) return;
+  localStorage.removeItem(STORAGE_APIKEY);
+  document.getElementById('apikey-input').value = '';
+  updateApiKeyStatus();
+  closeApiKeyModal();
+  showToast('🗑 APIキーを削除しました');
+}
+function updateApiKeyStatus() {
+  const key = loadApiKey();
+  const btn = document.getElementById('apikey-status-icon');
+  btn.textContent = key ? '✅' : '🔑';
+  document.getElementById('apikey-btn').title = key ? 'OCR有効（Gemini APIキー設定済）' : 'Gemini APIキー未設定（無料）';
+}
+function openApiKeyModal() {
+  const key = loadApiKey();
+  if(key) document.getElementById('apikey-input').value = key;
+  document.getElementById('apikey-modal').classList.remove('hidden');
+}
+function closeApiKeyModal() {
+  document.getElementById('apikey-modal').classList.add('hidden');
+}
+
+// カメラ/ファイル選択からのOCR付きハンドラ
+async function handleReceiptFileWithOCR(input) {
+  const file = input.files[0];
+  if(!file) return;
+  if(file.size > 5 * 1024 * 1024) {
+    showToast('⚠️ ファイルサイズは5MB以下にしてください','#e53e3e'); return;
+  }
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const isPdf = file.type === 'application/pdf';
+    const imgData = { type: isPdf ? 'pdf' : 'image', name: file.name, data: e.target.result };
+    receiptData = imgData;
+    renderReceiptPreview();
+
+    // 画像の場合はOCR実行
+    if(!isPdf && loadApiKey()) {
+      ocrPendingData = imgData;
+      await runOcr(e.target.result);
+    } else if(!isPdf && !loadApiKey()) {
+      // APIキー未設定の場合はヒント表示
+      showToast('💡 🔑ボタンでGemini APIキーを設定するとAI自動読み取りができます（無料）','#2b6cb0');
+    }
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+async function runOcr(base64DataUrl) {
+  const modal = document.getElementById('ocr-modal');
+  const statusEl = document.getElementById('ocr-status');
+  const progressBar = document.getElementById('ocr-progress-bar');
+
+  // モーダル表示（ローディング）
+  document.getElementById('ocr-modal-content').style.display = 'block';
+  document.getElementById('ocr-result-content').style.display = 'none';
+  document.getElementById('ocr-error-content').style.display = 'none';
+  modal.classList.remove('hidden');
+
+  // プログレスアニメーション
+  let progress = 0;
+  const progressTimer = setInterval(() => {
+    progress = Math.min(progress + 5, 85);
+    progressBar.style.width = progress + '%';
+  }, 200);
+
+  try {
+    statusEl.textContent = 'AIがレシートを解析中...';
+    const apiKey = loadApiKey();
+
+    // base64のdata URLから純粋なbase64を取得
+    const base64 = base64DataUrl.split(',')[1];
+    const mimeType = base64DataUrl.split(';')[0].split(':')[1];
+
+    const prompt = `このレシートまたは領収書から以下の情報を読み取り、必ずJSON形式のみで返してください。
+
+{
+  "date": "YYYY-MM-DD形式の日付（不明な場合は空文字）",
+  "shop": "店名・会社名（不明な場合は空文字）",
+  "amount_ex_tax": 税抜き金額の数値（不明な場合は0、税抜き表記がない場合は税込から推算）,
+  "amount_inc_tax": 税込合計金額の数値（不明な場合は0）,
+  "tax_rate": 消費税率の数値10または8または0（不明な場合は10）,
+  "category": "交通費・駐車場代・材料費・外注費・通信費・消耗品・その他 のいずれか",
+  "memo": "店名や品目など補足メモ（20文字以内）"
+}
+
+注意：
+- 日付が「令和」表記の場合は西暦に変換する（令和7年=2025年、令和6年=2024年）
+- 金額は数値のみ（円記号・カンマなし）
+- JSONのみ返す。説明文は不要。`;
+
+    // Gemini 2.0 Flash API（無料枠：1日1500リクエスト）
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              {
+                inline_data: {
+                  mime_type: mimeType,
+                  data: base64
+                }
+              },
+              { text: prompt }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0,
+            maxOutputTokens: 512
+          }
+        })
+      }
+    );
+
+    clearInterval(progressTimer);
+    progressBar.style.width = '100%';
+
+    if(!response.ok) {
+      const err = await response.json();
+      const msg = err.error?.message || `API Error ${response.status}`;
+      // APIキーエラーの場合は分かりやすいメッセージ
+      if(response.status === 400 || response.status === 403) {
+        throw new Error('APIキーが無効です。🔑ボタンから正しいキーを設定してください。');
+      }
+      throw new Error(msg);
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if(!text) throw new Error('レスポンスが空です');
+
+    // JSON抽出（```json ... ``` にも対応）
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if(!jsonMatch) throw new Error('レスポンスのJSON解析に失敗しました');
+
+    ocrResult = JSON.parse(jsonMatch[0]);
+
+    // 結果表示
+    showOcrResult(ocrResult);
+
+  } catch(err) {
+    clearInterval(progressTimer);
+    progressBar.style.width = '0%';
+    document.getElementById('ocr-modal-content').style.display = 'none';
+    document.getElementById('ocr-error-content').style.display = 'block';
+    document.getElementById('ocr-error-msg').textContent = `読み取りエラー: ${err.message}`;
+    console.error('OCR error:', err);
+  }
+}
+
+function showOcrResult(result) {
+  document.getElementById('ocr-modal-content').style.display = 'none';
+  document.getElementById('ocr-result-content').style.display = 'block';
+
+  const catEmoji = {
+    '交通費':'🚃', '駐車場代':'🅿️', '材料費':'🔧',
+    '外注費':'👷', '通信費':'📱', '消耗品':'📦', 'その他':'📌'
+  };
+
+  const fields = [
+    { label: '📅 日付', value: result.date || '（不明）' },
+    { label: '🏪 店名', value: result.shop || '（不明）' },
+    { label: '💴 税抜金額', value: result.amount_ex_tax > 0 ? result.amount_ex_tax.toLocaleString() + '円' : '（不明）' },
+    { label: '💰 税込合計', value: result.amount_inc_tax > 0 ? result.amount_inc_tax.toLocaleString() + '円' : '（不明）' },
+    { label: '🏷 消費税率', value: result.tax_rate + '%' },
+    { label: '🗂 科目', value: (catEmoji[result.category] || '📌') + ' ' + (result.category || 'その他') },
+    { label: '📝 メモ', value: result.memo || '' },
+  ].filter(f => f.value && f.value !== '（不明）' && f.value !== '0円');
+
+  document.getElementById('ocr-result-fields').innerHTML = fields.map(f => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #e2e8f0;">
+      <span style="font-size:0.82rem;color:#718096;">${f.label}</span>
+      <span style="font-size:0.9rem;font-weight:700;color:#2d3748;">${f.value}</span>
+    </div>
+  `).join('');
+}
+
+function applyOcrResult() {
+  if(!ocrResult) return;
+
+  // フォームに自動入力
+  if(ocrResult.date) document.getElementById('inp-date').value = ocrResult.date;
+  if(ocrResult.amount_ex_tax > 0) {
+    document.getElementById('inp-amount').value = ocrResult.amount_ex_tax;
+  } else if(ocrResult.amount_inc_tax > 0) {
+    // 税込のみの場合：税抜き逆算
+    const rate = ocrResult.tax_rate || 10;
+    const exTax = Math.round(ocrResult.amount_inc_tax / (1 + rate/100));
+    document.getElementById('inp-amount').value = exTax;
+  }
+  if(ocrResult.tax_rate !== undefined) {
+    document.getElementById('inp-taxrate').value = String(ocrResult.tax_rate);
+  }
+  if(ocrResult.category && CATEGORIES.includes(ocrResult.category)) {
+    document.getElementById('inp-category').value = ocrResult.category;
+  }
+  const memo = [ocrResult.shop, ocrResult.memo].filter(Boolean).join(' ').slice(0, 40);
+  if(memo) document.getElementById('inp-memo').value = memo;
+
+  calcTax();
+  closeOcrModal();
+  showToast('✅ 読み取り結果を入力しました！','#38a169');
+}
+
+function closeOcrModal() {
+  document.getElementById('ocr-modal').classList.add('hidden');
+  ocrResult = null;
+}
+
+// ============================================================
+// 初期化
+// ============================================================
+initHeaderMonth();
+refreshDatalist();
+renderSummary();
+updateApiKeyStatus();
+</script>
+</body>
+</html>
